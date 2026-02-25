@@ -4,6 +4,7 @@ import { User } from "../models/user.model.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken";
+import mongoose from "mongoose";
 
 const generateAccessAndRefreshToken = async (userId) => {
   try {
@@ -278,6 +279,8 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Avatar file is missing");
   }
 
+  // TODO : delete old image - assignment
+
   const avatar = await uploadOnCloudinary(avatarLocalPath);
   if (!avatar.url) {
     throw new ApiError(400, "Error while uploading on avatar");
@@ -304,6 +307,8 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Cover image file is missing");
   }
 
+  // TODO : delete old image - assignment
+
   const coverImage = await uploadOnCloudinary(coverImageLocalPath);
   if (!coverImage.url) {
     throw new ApiError(400, "Error while uploading on cover image");
@@ -321,6 +326,148 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
     .status(200)
     .json(new ApiResponse(200, user, "Cover Image updated successfully"));
 });
+
+const getUserChannelProfile = asyncHandler(async (req, res) => {
+  // first get the user from the params
+  const { username } = req?.params;
+
+  if (!username) {
+    throw new ApiError(400, "Username is missing");
+  }
+
+  const channel = await User.aggregate([
+    {
+      $match: {
+        username: username.toLowerCase(),
+      },
+    },
+    {
+      //it lookups to the subscription model to find how many subscriber the user's channel have
+      $lookup: {
+        from: "subscriptions",
+        localField: "_id",
+        foreignField: "channel",
+        as: "subscribers",
+      },
+    },
+    {
+      // it lookups to the subscription model to find how many channel the user subscribed
+      $lookup: {
+        from: "subscriptions",
+        localField: "_id",
+        foreignField: "subscriber",
+        as: "subscribedTo",
+      },
+    },
+    {
+      // it add more fields to the User model
+      $addFields: {
+        subscribersCount: {
+          // it will count the subscribers
+          $size: "$subscribers",
+        },
+        channelSubscribedToCount: {
+          // it will count, how many channel the user subscribed
+          $size: "$subscribedTo",
+        },
+        isSubscribed: {
+          // it is field where either true or false is inside
+          // it shows whether the user is subscriber of a channel or not
+          // like in the youtube if the user is already subscribed to a channel it shows the subscribed icon rather than subscribe icon
+          $cond: {
+            if: { $in: [req.user?._id, "$subscribers.subscriber"] },
+            then: true,
+            else: false,
+          },
+        },
+      },
+    },
+    {
+      $project: {
+        fullName: 1,
+        username: 1,
+        subscribersCount: 1,
+        channelSubscribedToCount: 1,
+        isSubscribed: 1,
+        avatar: 1,
+        coverImage: 1,
+        email: 1,
+      },
+    },
+  ]);
+  console.log(channel);
+
+  if (!channel?.length) {
+    throw new ApiError(404, "Channel does not exist");
+  }
+  res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        channel[0],
+        "User channel profile fetched successfully"
+      )
+    );
+});
+
+const getWatchHistory = asyncHandler(async (req, res) => {
+  const user = await User.aggregate([
+    {
+      // match the user with the mongodb id
+      // we cannot write directly req.user._id because the aggregation pipeline is directly passed to mongodb not with the mongoose. so what happens is that the id inside the mongodb is not a string its a "ObjectId(alkfdsnhalskd;fnlasdw)" like this the mongodb creates id for each document.Now we are matching directly to the string so to convert it we used mongoose.Types.ObjectId to convert it
+      $match: {
+        _id: new mongoose.Types.ObjectId(req.user?._id),
+      },
+    },
+    {
+      // it lookup to the video model to get the watchHistory
+      $lookup: {
+        from: "videos",
+        localField: "watchHistory",
+        foreignField: "_id",
+        as: "watchHistory",
+        // we are using nested pipeline in the video model because the video model have a owner field, so we need to lookup the user as well
+        pipeline: [
+          {
+            $lookup: {
+              from: "users",
+              localField: "owner",
+              foreignField: "_id",
+              as: "owner",
+              // this pipeline is used to get only fullName,username and avatar from the user model not all the data
+              pipeline: [
+                {
+                  $project: {
+                    fullName: 1,
+                    username: 1,
+                    avatar: 1,
+                  },
+                },
+              ],
+            },
+          },
+          {
+            $addFields: {
+              // this field is added in the video model to get the first object thats why we used $first
+              owner: {
+                $first: "$owner",
+              },
+            },
+          },
+        ],
+      },
+    },
+  ]);
+
+  res
+    .status(200)
+    .json(
+      new ApiResponse(200, user[0].watchHistory),
+      "Watch history fetched successfully"
+    );
+});
+
 export {
   registerUser,
   loginUser,
@@ -331,4 +478,6 @@ export {
   updateAccountDetails,
   updateUserAvatar,
   updateUserCoverImage,
+  getUserChannelProfile,
+  getWatchHistory,
 };
