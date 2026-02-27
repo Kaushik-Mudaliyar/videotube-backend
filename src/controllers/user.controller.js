@@ -233,7 +233,7 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
   const { oldPassword, newPassword } = req.body;
   const user = await User.findById(req.user?._id);
   const isPasswordCorrect = await user.isPasswordCorrect(oldPassword);
-  if (isPasswordCorrect) {
+  if (!isPasswordCorrect) {
     throw new ApiError(400, "Invalid old password");
   }
   user.password = newPassword;
@@ -428,7 +428,7 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
   if (!channel?.length) {
     throw new ApiError(404, "Channel does not exist");
   }
-  res
+  return res
     .status(200)
     .json(
       new ApiResponse(
