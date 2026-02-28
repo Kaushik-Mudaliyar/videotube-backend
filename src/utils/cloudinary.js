@@ -32,10 +32,10 @@ const uploadOnCloudinary = async (localFilePath) => {
   }
 };
 
-const deleteOnCloudinary = async (public_id) => {
+const deleteOnCloudinary = async (public_id, resourceType) => {
   try {
     const response = await cloudinary.uploader.destroy(public_id, {
-      resource_type: "image",
+      resource_type: resourceType,
     });
     // console.log(response);
     return response;

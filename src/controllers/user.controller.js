@@ -293,7 +293,7 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
   const public_id = pathArray[5].split(".")[0];
   // console.log(public_id);
 
-  const deletedResponse = await deleteOnCloudinary(String(public_id));
+  const deletedResponse = await deleteOnCloudinary(String(public_id,"image"));
   // if (deletedResponse?.result === "ok") {
   //   console.log("Old avatar deleted successfully");
   // }
