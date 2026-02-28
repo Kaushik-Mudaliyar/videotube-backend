@@ -125,11 +125,13 @@ const updateVideo = asyncHandler(async (req, res) => {
   const oldThumbnailUrl = existedVideo.thumbnail;
   const url = new URL(oldThumbnailUrl);
   const path = url.pathname;
-  const pathArray = path.split("/");
-  const public_id = pathArray[5].split(".")[0];
+  const publicIdWithExtension = path.split("/").pop();
+  // console.log(publicIdWithExtension);
+
+  const public_id = publicIdWithExtension.split(".")[0];
   // console.log(public_id);
 
-  const deletedResponse = await deleteOnCloudinary(String(public_id, "video"));
+  const deletedResponse = await deleteOnCloudinary(public_id, "image");
   // if (deletedResponse?.result === "ok") {
   //   console.log("Old thumbnail file deleted successfully");
   // }
@@ -155,8 +157,39 @@ const updateVideo = asyncHandler(async (req, res) => {
 });
 
 const deleteVideo = asyncHandler(async (req, res) => {
-  const { videoId } = req.params;
   //TODO: delete video
+  // find the video by videoId
+  // get the videoFile url
+  // use the url method to get all the elements in the url
+  // split it and get the video public_id such that we can use it in the delete on cloudinary method
+  // apply the delete on cloudinary method
+  // after delete the video from the db as well
+  // return response
+
+  const { videoId } = req.params;
+  if (!videoId) {
+    throw new ApiError(400, "Video Id is required");
+  }
+  const video = await Video.findById(videoId);
+  if (!video) {
+    throw new ApiError(400, "Video is missing");
+  }
+  const videoUrl = video.videoFile;
+  const url = new URL(videoUrl);
+  const path = url.pathname;
+  const publicIdWithExtension = path.split("/").pop();
+  const public_id = publicIdWithExtension.split(".")[0];
+  // console.log(public_id)
+  const deletedResponse = await deleteOnCloudinary(public_id, "video");
+  if (deletedResponse?.result === "ok") {
+    console.log("Old video file deleted successfully");
+  }
+  // delete the whole video in the db
+  await Video.findByIdAndDelete(videoId);
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, {}, "Old video deleted successfully"));
 });
 
 const togglePublishStatus = asyncHandler(async (req, res) => {
