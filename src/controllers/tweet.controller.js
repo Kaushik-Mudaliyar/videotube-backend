@@ -18,7 +18,7 @@ const createTweet = asyncHandler(async (req, res) => {
   const userId = req.user?._id; // applied verifyJwt so we have access to it
 
   // check if content filed is empty
-  if (!content) {
+  if (!content || content.trim() === "") {
     throw new ApiError(400, "Content field is required");
   }
 
@@ -43,6 +43,42 @@ const getUserTweets = asyncHandler(async (req, res) => {
 
 const updateTweet = asyncHandler(async (req, res) => {
   //TODO: update tweet
+  // get content to update tweet from req.body
+  // get tweetId from req.params
+  // check tweetId we get from req.params as isValidObjectId
+  // isValidObjectId is a method of mongoose which checks if the given id is a valid object id or not and returns true or false
+  // using findByIdAndUpdate change the content
+  // check updatedTweet
+  // return response
+
+  const { content } = req.body;
+  const { tweetId } = req.params;
+
+  if (!content || content.trim() === "") {
+    throw new ApiError(400, "Content is required");
+  }
+  if (!isValidObjectId(tweetId)) {
+    throw new ApiError(400, "Invalid TweetId");
+  }
+
+  const updatedTweet = await Tweet.findByIdAndUpdate(
+    tweetId,
+    {
+      $set: {
+        content: content,
+      },
+    },
+    {
+      new: true,
+    }
+  );
+  if (!updatedTweet) {
+    throw new ApiError(400, "Error while updating the tweet in db");
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(202, updatedTweet, "Tweet updated successfully"));
 });
 
 const deleteTweet = asyncHandler(async (req, res) => {
