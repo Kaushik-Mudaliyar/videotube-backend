@@ -1,6 +1,5 @@
 import mongoose, { isValidObjectId } from "mongoose";
 import { Tweet } from "../models/tweet.model.js";
-import { User } from "../models/user.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -22,7 +21,7 @@ const createTweet = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Content field is required");
   }
 
-  // checking the user exist in our db
+  // creating a tweet
   const tweet = await Tweet.create({
     content,
     owner: userId,
@@ -39,6 +38,60 @@ const createTweet = asyncHandler(async (req, res) => {
 
 const getUserTweets = asyncHandler(async (req, res) => {
   // TODO: get user tweets
+  // get userId from req.params
+  // validate id from isValidObjectId
+  // apply aggregation pipeline for owner details
+  // match the userid and get all the tweets
+  // lookup to the User model to get the fullName, username, avatar
+  // check tweets
+  // return response
+
+  const { userId } = req.params;
+  if (!isValidObjectId(userId)) {
+    throw new ApiError(400, "Invalid User Id");
+  }
+  const userTweets = await Tweet.aggregate([
+    {
+      $match: {
+        // matching the userId with the owner field in tweet model to find all the user tweets
+        owner: new mongoose.Types.ObjectId(userId),
+      },
+    },
+    {
+      // looking up in user model to get some details
+      $lookup: {
+        from: "users",
+        localField: "owner",
+        foreignField: "_id",
+        as: "owner",
+        // another pipeline to get only fullName,username,avatar
+        pipeline: [
+          {
+            $project: {
+              fullName: 1,
+              username: 1,
+              avatar: 1,
+            },
+          },
+        ],
+      },
+    },
+    {
+      $addFields: {
+        owner: {
+          $first: "$owner",
+        },
+      },
+    },
+  ]);
+
+  if (!userTweets.length) {
+    throw new ApiError(400, "User does not tweeted anything yet!");
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, userTweets, "Get user tweets successfully"));
 });
 
 const updateTweet = asyncHandler(async (req, res) => {
@@ -62,7 +115,7 @@ const updateTweet = asyncHandler(async (req, res) => {
   }
 
   const updatedTweet = await Tweet.findByIdAndUpdate(
-    tweetId,
+    { tweetId, owner: req.user?._id },
     {
       $set: {
         content: content,
@@ -95,7 +148,10 @@ const deleteTweet = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Invalid Tweet Id");
   }
 
-  const deletedTweet = await Tweet.findByIdAndDelete(tweetId);
+  const deletedTweet = await Tweet.findByIdAndDelete({
+    tweetId,
+    owner: req.user?._id,
+  });
 
   if (!deletedTweet) {
     throw new ApiError(400, "Tweet not found");
