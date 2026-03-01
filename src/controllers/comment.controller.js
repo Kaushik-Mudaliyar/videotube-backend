@@ -48,10 +48,62 @@ const addComment = asyncHandler(async (req, res) => {
 
 const updateComment = asyncHandler(async (req, res) => {
   // TODO: update a comment
+  // get comment id from req.params
+  // check it is a valid object id
+  // get comment from req.body
+  // check if it is empty or not
+  // use find by id and update method to update the comment
+  // check comment
+  // return response
+  const { commentId } = req.params;
+  const { content } = req.body;
+  if (!isValidObjectId(commentId)) {
+    throw new ApiError(400, "Comment id is not valid");
+  }
+  if (!content || content.trim() === "") {
+    throw new ApiError(400, "Content is required");
+  }
+  const updatedComment = await Comment.findOneAndUpdate(
+    { _id: commentId, owner: req.user._id },
+    {
+      $set: {
+        content,
+      },
+    },
+    {
+      new: true,
+    }
+  );
+  if (!updatedComment) {
+    throw new ApiError(400, "Error while updating the comment");
+  }
+  return res
+    .status(200)
+    .json(new ApiResponse(200, updatedComment, "Comment updated successfully"));
 });
 
 const deleteComment = asyncHandler(async (req, res) => {
   // TODO: delete a comment
+  // get comment id from req.params
+  // check commentId
+  // use the find by id and delete
+  // check deleted comment
+  // return response
+
+  const { commentId } = req.params;
+  if (!isValidObjectId(commentId)) {
+    throw new ApiError(400, "Invalid Comment Id");
+  }
+  const deletedComment = await Comment.findOneAndDelete({
+    _id: commentId,
+    owner: req.user?._id,
+  });
+  if (!deletedComment) {
+    throw new ApiError(400, "Error while deleting the comment");
+  }
+  return res
+    .status(200)
+    .json(new ApiResponse(200, {}, "Comment deleted successfully"));
 });
 
 export { getVideoComments, addComment, updateComment, deleteComment };
