@@ -113,9 +113,9 @@ const updateTweet = asyncHandler(async (req, res) => {
   if (!isValidObjectId(tweetId)) {
     throw new ApiError(400, "Invalid TweetId");
   }
-
-  const updatedTweet = await Tweet.findByIdAndUpdate(
-    { tweetId, owner: req.user?._id },
+  // using findOneAndDelete to check both the user's id and tweet's id
+  const updatedTweet = await Tweet.findOneAndUpdate(
+    { _id: tweetId, owner: req.user?._id },
     {
       $set: {
         content: content,
@@ -148,8 +148,9 @@ const deleteTweet = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Invalid Tweet Id");
   }
 
-  const deletedTweet = await Tweet.findByIdAndDelete({
-    tweetId,
+  // using findOneAndDelete to check both the user's id and tweet's id
+  const deletedTweet = await Tweet.findOneAndDelete({
+    _id: tweetId,
     owner: req.user?._id,
   });
 
