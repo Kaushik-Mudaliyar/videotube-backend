@@ -35,25 +35,55 @@ const createPlaylist = asyncHandler(async (req, res) => {
 });
 
 const getUserPlaylists = asyncHandler(async (req, res) => {
-  const { userId } = req.params;
   //TODO: get user playlists
-  // check userId whether it is a validObjectId or not
-  // use find with the owner's id and get all the playlist
-  // check response
-  // return the response
-
+  // get user id from params
+  // check if user id is valid object id
+  // apply aggregation and get name,description, visibility, totalVideos, and video details
+  // return response
+  const { userId } = req.params;
   if (!isValidObjectId(userId)) {
     throw new ApiError(400, "User Id is not Valid");
   }
 
-  let filter = { owner: userId };
-
-  // If requesting someone else's playlists
-  if (req.user._id.toString() !== userId) {
-    filter.visibility = "public";
-  }
-
-  const userPlaylist = await Playlist.find(filter);
+  const userPlaylist = await Playlist.aggregate([
+    {
+      $match: {
+        owner: new mongoose.Types.ObjectId(userId),
+        ...(req.user?._id.toString() !== userId
+          ? { visibility: "public" }
+          : {}),
+      },
+    },
+    {
+      $lookup: {
+        from: "videos", // verify collection name
+        localField: "videos",
+        foreignField: "_id",
+        as: "videos",
+      },
+    },
+    {
+      $addFields: {
+        totalVideos: { $size: "$videos" },
+      },
+    },
+    {
+      $project: {
+        name: 1,
+        description: 1,
+        visibility: 1,
+        totalVideos: 1,
+        videos: {
+          _id: 1,
+          title: 1,
+          thumbnail: 1,
+          duration: 1,
+          views: 1,
+          videoFile: 1,
+        },
+      },
+    },
+  ]);
 
   return res
     .status(200)
