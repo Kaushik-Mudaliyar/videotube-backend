@@ -41,20 +41,15 @@ const toggleSubscription = asyncHandler(async (req, res) => {
     channel: channelId,
   });
 
+  let Subscribed, message;
+
   if (isSubscriptionExist) {
     await Subscription.findOneAndDelete({
       subscriber: subscriberId,
       channel: channelId,
     });
-    return res
-      .status(200)
-      .json(
-        new ApiResponse(
-          200,
-          { isSubscribed: false },
-          "Unsubscribed Successfully"
-        )
-      );
+    Subscribed = false;
+    message = "Unsubscribed Successfully";
   } else {
     const createSubscription = await Subscription.create({
       subscriber: subscriberId,
@@ -63,12 +58,12 @@ const toggleSubscription = asyncHandler(async (req, res) => {
     if (!createSubscription) {
       throw new ApiError(400, "Error while creating the subscription");
     }
-    return res
-      .status(201)
-      .json(
-        new ApiResponse(201, { isSubscribed: true }, "Subscribed Successfully")
-      );
+    Subscribed = true;
+    message = "Subscribed Successfully";
   }
+  return res
+    .status(200)
+    .json(new ApiResponse(200, { isSubscribed: Subscribed }, message));
 });
 
 // controller to return subscriber list of a channel
