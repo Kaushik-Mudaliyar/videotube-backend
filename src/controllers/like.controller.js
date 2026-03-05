@@ -127,6 +127,53 @@ const toggleTweetLike = asyncHandler(async (req, res) => {
 
 const getLikedVideos = asyncHandler(async (req, res) => {
   //TODO: get all liked videos
+  // get user id from req.user._id
+  // match the userid to the like documents
+  // and also check if the documents is a video like document
+  // now we have the documents of liked videos but all the video have videoId only
+  // so lookup to get the details from the video model
+  // make sure to unwind the videoDetails field because lookup will provide data in the array
+  // unwind converts it into an object
+  // then project the necessary details using project operator
+  // return response
+
+  const userId = req.user?._id;
+
+  const likedVideos = await Like.aggregate([
+    {
+      $match: {
+        likedBy: new mongoose.Types.ObjectId(userId),
+        video: { $exists: true },
+      },
+    },
+    {
+      $lookup: {
+        from: "videos",
+        localField: "video",
+        foreignField: "_id",
+        as: "videoDetails",
+      },
+    },
+    {
+      $unwind: "$videoDetails",
+    },
+    {
+      $project: {
+        videoId: "$videoDetails._id",
+        videoFile: "$videoDetails.videoFile",
+        thumbnail: "$videoDetails.thumbnail",
+        title: "$videoDetails.title",
+        description: "$videoDetails.description",
+        duration: "$videoDetails.duration",
+        owner: "$videoDetails.owner",
+      },
+    },
+  ]);
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(200, likedVideos, "Fetched all liked videos successfully")
+    );
 });
 
 export { toggleCommentLike, toggleTweetLike, toggleVideoLike, getLikedVideos };
