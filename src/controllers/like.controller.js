@@ -2,6 +2,7 @@ import mongoose, { isValidObjectId } from "mongoose";
 import { Like } from "../models/like.model.js";
 import { Video } from "../models/video.model.js";
 import { Comment } from "../models/comment.model.js";
+import { Tweet } from "../models/tweet.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -86,6 +87,42 @@ const toggleCommentLike = asyncHandler(async (req, res) => {
 const toggleTweetLike = asyncHandler(async (req, res) => {
   const { tweetId } = req.params;
   //TODO: toggle like on tweet
+  if (!isValidObjectId(tweetId)) {
+    throw new ApiError(400, "Invalid Tweet Id");
+  }
+  const isTweetExist = await Tweet.findById(tweetId);
+  if (!isTweetExist) {
+    throw new ApiError(400, "Tweet does not exist");
+  }
+  const isTweetLiked = await Like.findOne({
+    tweet: tweetId,
+    likedBy: req.user?._id,
+  });
+  let liked, message;
+  if (isTweetLiked) {
+    await Like.findOneAndDelete({
+      tweet: tweetId,
+      likedBy: req.user?._id,
+    });
+    ((liked = false), (message = "Tweet Unliked Successfully"));
+  } else {
+    await Like.create({
+      tweet: tweetId,
+      likedBy: req.user?._id,
+    });
+    liked = true;
+    message = "Tweet Liked Successfully";
+  }
+  let tweetCounts = await Like.countDocuments({ tweet: tweetId });
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        { isLiked: liked, totalTweets: tweetCounts },
+        message
+      )
+    );
 });
 
 const getLikedVideos = asyncHandler(async (req, res) => {
