@@ -33,8 +33,8 @@ const toggleSubscription = asyncHandler(async (req, res) => {
   }
 
   if (subscriberId.toString() === channelId) {
-      throw new ApiError(400, "You cannot subscribe to your own channel");
-    }
+    throw new ApiError(400, "You cannot subscribe to your own channel");
+  }
 
   const isSubscriptionExist = await Subscription.findOne({
     subscriber: subscriberId,
@@ -74,6 +74,49 @@ const toggleSubscription = asyncHandler(async (req, res) => {
 // controller to return subscriber list of a channel
 const getUserChannelSubscribers = asyncHandler(async (req, res) => {
   const { channelId } = req.params;
+  if (!isValidObjectId(channelId)) {
+    throw new ApiError(400, "Invalid Channel Id");
+  }
+
+  const subscribers = await Subscription.aggregate([
+    {
+      // match the channel based on our channel id
+      $match: {
+        channel: new mongoose.Types.ObjectId(channelId),
+      },
+    },
+    {
+      // lookup to the user to find the details of the subscriber
+      $lookup: {
+        from: "users",
+        localField: "subscriber",
+        foreignField: "_id",
+        as: "subscriberDetails",
+      },
+    },
+    {
+      // after lookup we get an array of subscriber Details to convert it to an object we can use unwind operator to convert the array of subscriber to the object of subscriber
+      $unwind: "$subscriberDetails",
+    },
+    {
+      // we had lookup from the users so we got all the details but we just want to show some details only like username,fullname,userid and avatar. so we use project to show some details only
+      $project: {
+        subscriberId: "$subscriberDetails._id",
+        username: "$subscriberDetails.username",
+        avatar: "$subscriberDetails.avatar",
+        fullName: "$subscriberDetails.fullName",
+      },
+    },
+  ]);
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        subscribers,
+        "Fetched User Channel subscribers successfully"
+      )
+    );
 });
 
 // controller to return channel list to which user has subscribed
