@@ -56,8 +56,8 @@ const publishAVideo = asyncHandler(async (req, res) => {
     description,
     duration: videoFile.duration,
     isPublished: true,
-    owner: req.user?._id
-    // views is pending
+    owner: req.user?._id,
+    views: 0,
   });
 
   if (!video) {
@@ -75,7 +75,11 @@ const getVideoById = asyncHandler(async (req, res) => {
   if (!videoId) {
     throw new ApiError(400, "Video Id is missing");
   }
-  const video = await Video.findById(videoId);
+  const video = await Video.findOneAndUpdate(videoId, {
+    $inc: {
+      views: 1,
+    },
+  });
 
   if (!video) {
     throw new ApiError(400, "Video does not exist");
@@ -83,7 +87,7 @@ const getVideoById = asyncHandler(async (req, res) => {
 
   return res
     .status(200)
-    .json(new ApiResponse(200, video.videoFile, "Video fetched successfully"));
+    .json(new ApiResponse(200, video, "Video fetched successfully"));
 });
 
 const updateVideo = asyncHandler(async (req, res) => {
