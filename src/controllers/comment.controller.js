@@ -135,7 +135,7 @@ const updateComment = asyncHandler(async (req, res) => {
     }
   );
   if (!updatedComment) {
-    throw new ApiError(400, "Error while updating the comment");
+    throw new ApiError(404, "Comment with commentId does not exist");
   }
   return res
     .status(200)
@@ -159,7 +159,7 @@ const deleteComment = asyncHandler(async (req, res) => {
     owner: req.user?._id,
   });
   if (!deletedComment) {
-    throw new ApiError(400, "Error while deleting the comment");
+    throw new ApiError(404, "Comment with commentId does not exist");
   }
   return res
     .status(200)
