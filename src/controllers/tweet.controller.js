@@ -113,7 +113,7 @@ const updateTweet = asyncHandler(async (req, res) => {
   if (!isValidObjectId(tweetId)) {
     throw new ApiError(400, "Invalid TweetId");
   }
-  // using findOneAndDelete to check both the user's id and tweet's id
+  // using findOneAndUpdate to check both the user's id and tweet's id
   const updatedTweet = await Tweet.findOneAndUpdate(
     { _id: tweetId, owner: req.user?._id },
     {
@@ -126,7 +126,7 @@ const updateTweet = asyncHandler(async (req, res) => {
     }
   );
   if (!updatedTweet) {
-    throw new ApiError(400, "Error while updating the tweet in db");
+    throw new ApiError(400, "Tweet does not exist");
   }
 
   return res
@@ -155,7 +155,7 @@ const deleteTweet = asyncHandler(async (req, res) => {
   });
 
   if (!deletedTweet) {
-    throw new ApiError(400, "Tweet not found");
+    throw new ApiError(404, "Tweet not found");
   }
 
   return res
