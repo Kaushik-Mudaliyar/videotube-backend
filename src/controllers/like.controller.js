@@ -51,7 +51,7 @@ const toggleCommentLike = asyncHandler(async (req, res) => {
   if (!isValidObjectId(commentId)) {
     throw new ApiError(400, "Invalid Comment Id");
   }
-  const isCommentExist = Comment.findById(commentId);
+  const isCommentExist = await Comment.findById(commentId);
   if (!isCommentExist) {
     throw new ApiError(404, "Comment does not exist");
   }
@@ -104,7 +104,8 @@ const toggleTweetLike = asyncHandler(async (req, res) => {
       tweet: tweetId,
       likedBy: req.user?._id,
     });
-    ((liked = false), (message = "Tweet Unliked Successfully"));
+    liked = false;
+    message = "Tweet Unliked Successfully";
   } else {
     await Like.create({
       tweet: tweetId,
