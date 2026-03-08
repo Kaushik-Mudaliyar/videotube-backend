@@ -12,7 +12,9 @@ const createPlaylist = asyncHandler(async (req, res) => {
   // check name and description
   // create playlist
   const { name, description, visibility } = req.body;
-  if (!name.trim() || !description.trim() || !visibility) {
+  // console.log(name, description, visibility);
+
+  if (name.trim() === "" || description.trim() === "" || !visibility) {
     throw new ApiError(
       400,
       "Name, description and visibility of playlist is required while creating a playlist"
@@ -207,6 +209,16 @@ const deletePlaylist = asyncHandler(async (req, res) => {
   if (!isValidObjectId(playlistId)) {
     throw new ApiError(400, "Invalid playlist id");
   }
+
+  const playlist = await Playlist.findById(playlistId);
+  // check so that only owner can delete the playlist
+  if (playlist.owner.toString() !== req.user._id.toString()) {
+    throw new ApiError(
+      400,
+      "You do not have permission to delete the playlist only owner can delete it"
+    );
+  }
+
   await Playlist.findOneAndDelete({
     _id: playlistId,
     owner: req.user._id,
@@ -227,25 +239,24 @@ const updatePlaylist = asyncHandler(async (req, res) => {
   if (!name.trim() || !description.trim() || !visibility) {
     throw new ApiError(400, "Name, description and visibility are required");
   }
-  const updatedPlaylist = await Playlist.findOneAndUpdate(
-    {
-      _id: playlistId,
-      owner: req.user._id,
-    },
-    {
-      name,
-      description,
-      visibility,
-    },
-    {
-      new: true,
-    }
-  );
+
+  const playlist = await Playlist.findById(playlistId);
+  // check so that owner can only update the playlist
+  if (playlist.owner.toString() !== req.user._id.toString()) {
+    throw new ApiError(
+      400,
+      "You do not have permission to update this playlist"
+    );
+  }
+
+  playlist.name = name;
+  playlist.description = description;
+  playlist.visibility = visibility;
+  await playlist.save({ validateBeforeSave: false });
+
   return res
     .status(200)
-    .json(
-      new ApiResponse(200, updatedPlaylist, "Playlist updated successfully")
-    );
+    .json(new ApiResponse(200, playlist, "Playlist updated successfully"));
 });
 
 export {
